@@ -80,7 +80,8 @@ jobs:
           git clone --depth 1 --branch v2.4.0 --recurse-submodules \
             https://github.com/dmlc/dgl.git "$RUNNER_TEMP/dgl-v2.4.0"
           cd "$RUNNER_TEMP/dgl-v2.4.0"
-          bash script/build_dgl.sh -c
+          export DGL_HOME="$RUNNER_TEMP/dgl-v2.4.0"
+          bash script/build_dgl.sh -c -t release
           cd python
           python setup.py install
           python setup.py build_ext --inplace
