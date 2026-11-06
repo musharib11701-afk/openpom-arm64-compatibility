@@ -1,0 +1,25 @@
+# Local Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Secrets and local configuration (never commit these)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Model weights and checkpoints (never upload to this public test repo)
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Build outputs
+build/
+dist/
+*.egg-info/

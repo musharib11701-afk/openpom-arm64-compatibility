@@ -1,0 +1,101 @@
+name: ARM64 OpenPOM stack compatibility
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/arm64-compat.yml"
+      - "requirements-arm64.txt"
+      - "scripts/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openpom-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  arm64-stack:
+    name: Build and smoke-test pinned stack on ARM64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    env:
+      DGLBACKEND: pytorch
+      CMAKE_BUILD_PARALLEL_LEVEL: "2"
+      MAKEFLAGS: "-j2"
+    steps:
+      - name: Check out harness (without persisting Git credentials)
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements-arm64.txt
+
+      - name: Confirm native ARM64 runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Architecture: $(uname -m)"
+          test "$(uname -m)" = "aarch64"
+          echo "Python: $(python --version)"
+          lscpu | grep -E 'Architecture|CPU\(s\)|Model name' || true
+          free -h
+          df -h "$GITHUB_WORKSPACE"
+
+      - name: Install native build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3-dev make cmake
+
+      - name: Install pinned Python build and runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements-arm64.txt
+          python - <<'PY'
+          import platform, torch
+          print("machine:", platform.machine())
+          print("torch:", torch.__version__)
+          print("CUDA available:", torch.cuda.is_available())
+          assert platform.machine().lower() in {"aarch64", "arm64"}
+          assert torch.__version__.split("+")[0] == "2.4.0"
+          assert not torch.cuda.is_available()
+          PY
+
+      - name: Build DGL 2.4.0 from official source (CPU)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v2.4.0 --recurse-submodules \
+            https://github.com/dmlc/dgl.git "$RUNNER_TEMP/dgl-v2.4.0"
+          cd "$RUNNER_TEMP/dgl-v2.4.0"
+          bash script/build_dgl.sh -c
+          cd python
+          python setup.py install
+          python setup.py build_ext --inplace
+
+      - name: Install exact DeepChem and DGL-LifeSci versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install \
+            "dgllife==0.3.2" \
+            "deepchem==2.8.1.dev20260821122258"
+          python -m pip check
+
+      - name: Run ARM64 package and molecular graph smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/smoke_stack.py
