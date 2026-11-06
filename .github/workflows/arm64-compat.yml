@@ -15,7 +15,8 @@ permissions:
 
 concurrency:
   group: openpom-arm64-${{ github.ref }}
-  cancel-in-progress: true
+  # Do not terminate a long native compile just because another run is queued.
+  cancel-in-progress: false
 
 jobs:
   arm64-stack:
@@ -81,6 +82,23 @@ jobs:
             https://github.com/dmlc/dgl.git "$RUNNER_TEMP/dgl-v2.4.0"
           cd "$RUNNER_TEMP/dgl-v2.4.0"
           export DGL_HOME="$RUNNER_TEMP/dgl-v2.4.0"
+          # DGL v2.4.0's helper invokes bare "make -j", which can spawn
+          # unbounded compiler jobs. Cap it explicitly for the 4-vCPU ARM64 runner.
+          python - <<'PY'
+          from pathlib import Path
+
+          build_script = Path("script/build_dgl.sh")
+          source = build_script.read_text()
+          old = "  make -j\n"
+          new = "  make -j2\n"
+          if source.count(old) != 1:
+              raise SystemExit(
+                  "Expected exactly one upstream 'make -j' command; "
+                  "refusing to patch an unexpected DGL build script."
+              )
+          build_script.write_text(source.replace(old, new))
+          PY
+          grep -n '^  make -j2$' script/build_dgl.sh
           bash script/build_dgl.sh -c -t release
           cd python
           python setup.py install
