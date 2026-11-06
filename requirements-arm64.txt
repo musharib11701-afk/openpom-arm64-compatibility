@@ -2,6 +2,5 @@
 # DGL is intentionally omitted here: it is built from its official v2.4.0 source tag.
 numpy==1.26.4
 torch==2.4.0
-torchdata==0.8.0
 rdkit==2026.3.6
 Cython==0.29.37
