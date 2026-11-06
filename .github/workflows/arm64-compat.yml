@@ -110,7 +110,10 @@ jobs:
           set -euo pipefail
           python -m pip install \
             "dgllife==0.3.2" \
-            "deepchem==2.8.1.dev20260821122258"
+            "deepchem==2.8.1.dev20260821122258" \
+            "psutil>=5.8.0" \
+            "pydantic>=2.0" \
+            "PyYAML"
           python -m pip check
 
       - name: Run ARM64 package and molecular graph smoke tests
