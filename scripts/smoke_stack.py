@@ -80,7 +80,7 @@ def main() -> int:
         "rdkit_distribution": distribution_version("rdkit"),
         "rdkit_runtime": rdBase.rdkitVersion,
         "dgllife": distribution_version("dgllife"),
-        "deepchem": dc.__version__,
+        "deepchem": distribution_version("deepchem"),
         "numpy": np.__version__,
         "checks": [
             "PyTorch CPU matrix multiplication",
@@ -90,7 +90,6 @@ def main() -> int:
             "DeepChem circular fingerprint featurization",
         ],
     }
-    print(json.dumps(report, indent=2))
 
     expected = {
         "torch": "2.4.0",
@@ -105,12 +104,13 @@ def main() -> int:
         "dgl": dgl.__version__,
         "rdkit": distribution_version("rdkit"),
         "dgllife": distribution_version("dgllife"),
-        "deepchem": dc.__version__,
+        "deepchem": distribution_version("deepchem"),
         "numpy": np.__version__,
     }
     mismatches = {key: {"expected": value, "actual": actual[key]} for key, value in expected.items() if actual[key] != value}
     if mismatches:
         raise RuntimeError("Version mismatch: " + json.dumps(mismatches, sort_keys=True))
+    print(json.dumps(report, indent=2))
 
     print("\nALL ARM64 DEPENDENCY SMOKE TESTS PASSED")
     return 0
