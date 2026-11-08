@@ -120,4 +120,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # DGL v2.4.0's setup.py installs its native libraries under sys.prefix/dgl.
+          # Point DGL's documented loader setting at that directory.
+          export DGL_LIBRARY_PATH="$(python -c 'import sys; print(sys.prefix)')/dgl"
+          test -f "$DGL_LIBRARY_PATH/libdgl.so"
+          test -f "$DGL_LIBRARY_PATH/tensoradapter/pytorch/libtensoradapter_pytorch_2.4.0.so"
+          test -f "$DGL_LIBRARY_PATH/dgl_sparse/libdgl_sparse_pytorch_2.4.0.so"
+          test -f "$DGL_LIBRARY_PATH/graphbolt/libgraphbolt_pytorch_2.4.0.so"
           python scripts/smoke_stack.py
