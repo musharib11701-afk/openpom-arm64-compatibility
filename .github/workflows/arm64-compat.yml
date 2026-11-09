@@ -2,9 +2,17 @@ name: ARM64 OpenPOM stack compatibility
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/arm64-compat.yml"
+      - "requirements-arm64.txt"
+      - "scripts/**"
   push:
     branches:
       - main
+      - "feat/**"
     paths:
       - ".github/workflows/arm64-compat.yml"
       - "requirements-arm64.txt"
@@ -22,7 +30,7 @@ jobs:
   arm64-stack:
     name: Build and smoke-test pinned stack on ARM64
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       DGLBACKEND: pytorch
       CMAKE_BUILD_PARALLEL_LEVEL: "2"
@@ -56,7 +64,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential python3-dev make cmake
+          sudo apt-get install -y build-essential python3-dev make cmake git-lfs
+          git lfs version
 
       - name: Install pinned Python build and runtime dependencies
         shell: bash
@@ -121,10 +130,25 @@ jobs:
         run: |
           set -euo pipefail
           # DGL v2.4.0's setup.py installs its native libraries under sys.prefix/dgl.
-          # Point DGL's documented loader setting at that directory.
           export DGL_LIBRARY_PATH="$(python -c 'import sys; print(sys.prefix)')/dgl"
           test -f "$DGL_LIBRARY_PATH/libdgl.so"
           test -f "$DGL_LIBRARY_PATH/tensoradapter/pytorch/libtensoradapter_pytorch_2.4.0.so"
           test -f "$DGL_LIBRARY_PATH/dgl_sparse/libdgl_sparse_pytorch_2.4.0.so"
           test -f "$DGL_LIBRARY_PATH/graphbolt/libgraphbolt_pytorch_2.4.0.so"
           python scripts/smoke_stack.py
+
+      - name: Run official OpenPOM trained ensemble inference on ARM64 CPU
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DGL_LIBRARY_PATH="$(python -c 'import sys; print(sys.prefix)')/dgl"
+          export OPENPOM_SOURCE_DIR="$RUNNER_TEMP/openpom-upstream"
+          python scripts/infer_openpom.py
+
+      - name: Upload real inference report
+        uses: actions/upload-artifact@v7
+        with:
+          name: openpom-arm64-real-inference-report
+          path: openpom-arm64-inference-report.json
+          if-no-files-found: error
+          retention-days: 14
